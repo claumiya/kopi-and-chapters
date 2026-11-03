@@ -220,6 +220,12 @@ section { margin:34px 0; }
 
 .book-body { padding:17px; }
 
+/* Admin drag-and-drop book ordering */
+.book.admin-draggable { cursor:grab; }
+.book.admin-draggable:active { cursor:grabbing; }
+.book.dragging { opacity:.45; }
+.book.drag-over { outline:2px dashed var(--wine); outline-offset:3px; }
+
 .book-body p { margin:5px 0 12px; }
 
 .details {
@@ -700,6 +706,9 @@ let isApproved = false;
 let booksCache = [];
 let ratingsCache = [];
 let currentBookId = null;
+let draggedBookId = null;
+let editingEventId = null;
+let editingEventImagePath = null;
 
 const $ = id => document.getElementById(id);
 
@@ -830,6 +839,46 @@ function makeBookCard(book) {
     body.appendChild(del);
   }
 
+  article.dataset.bookId=String(book.id);
+  if(isAdmin && (book.section==='upcoming' || book.section==='past')) {
+    article.draggable=true;
+    article.classList.add('admin-draggable');
+    article.title='Drag to change the order';
+    article.addEventListener('dragstart',event=>{
+      draggedBookId=String(book.id);
+      article.classList.add('dragging');
+      event.dataTransfer.effectAllowed='move';
+      event.dataTransfer.setData('text/plain',String(book.id));
+    });
+    article.addEventListener('dragend',()=>{
+      draggedBookId=null;
+      article.classList.remove('dragging');
+      document.querySelectorAll('.book.drag-over').forEach(el=>el.classList.remove('drag-over'));
+    });
+    article.addEventListener('dragover',event=>{
+      event.preventDefault();
+      event.dataTransfer.dropEffect='move';
+      article.classList.add('drag-over');
+    });
+    article.addEventListener('dragleave',()=>{
+      article.classList.remove('drag-over');
+    });
+    article.addEventListener('drop',async event=>{
+      event.preventDefault();
+      article.classList.remove('drag-over');
+      const sourceId=draggedBookId || event.dataTransfer.getData('text/plain');
+      const targetId=String(book.id);
+      if(!sourceId || sourceId===targetId) return;
+      const grid=article.parentElement;
+      const source=grid.querySelector(`[data-book-id="${CSS.escape(sourceId)}"]`);
+      if(!source) return;
+      const rect=article.getBoundingClientRect();
+      const insertAfter=event.clientY > rect.top + rect.height/2;
+      grid.insertBefore(source,insertAfter?article.nextSibling:article);
+      await saveBookOrder(grid);
+    });
+  }
+
   article.append(cover,body);
 
   return article;
@@ -928,6 +977,33 @@ async function loadRatings() {
 }
 
 
+/* SAVE MANUAL BOOK ORDER */
+
+async function saveBookOrder(grid) {
+  if(!isAdmin) return;
+  const cards=[...grid.querySelectorAll('.book[data-book-id]')];
+  const updates=cards.map((card,index)=>({
+    id:card.dataset.bookId,
+    display_order:index
+  }));
+
+  for(const item of updates) {
+    const {error}=await db.from('books')
+      .update({display_order:item.display_order})
+      .eq('id',item.id);
+    if(error) {
+      alert(`Could not save the new book order: ${error.message}`);
+      await loadBooks();
+      return;
+    }
+  }
+
+  booksCache=booksCache.map(book=>{
+    const item=updates.find(u=>u.id===String(book.id));
+    return item?{...book,display_order:item.display_order}:book;
+  });
+}
+
 /* LOAD BOOKS */
 
 async function loadBooks() {
@@ -946,8 +1022,13 @@ async function loadBooks() {
 
   await loadRatings();
 
-  const upcoming=booksCache.filter(b=>b.section==='upcoming');
-  const past=booksCache.filter(b=>b.section==='past');
+  const byManualOrder=(a,b)=>{
+    const ao=Number.isFinite(Number(a.display_order))?Number(a.display_order):999999;
+    const bo=Number.isFinite(Number(b.display_order))?Number(b.display_order):999999;
+    return ao-bo || String(b.created_at||'').localeCompare(String(a.created_at||''));
+  };
+  const upcoming=booksCache.filter(b=>b.section==='upcoming').sort(byManualOrder);
+  const past=booksCache.filter(b=>b.section==='past').sort(byManualOrder);
 
   $('upcomingGrid').replaceChildren();
   $('pastGrid').replaceChildren();
@@ -1070,18 +1151,22 @@ async function loadEvents() {
     body.append(title,details);
 
     if(isAdmin) {
+      const edit=document.createElement('button');
+      edit.className='btn secondary small';
+      edit.type='button';
+      edit.textContent='Edit event';
+      edit.style.marginTop='14px';
+      edit.addEventListener('click',()=>startEditEvent(event));
+
       const del=document.createElement('button');
       del.className='btn danger small';
       del.type='button';
       del.textContent='Delete event';
-
       del.style.marginTop='14px';
+      del.style.marginLeft='8px';
+      del.addEventListener('click',()=>deleteEvent(event));
 
-      del.addEventListener('click',()=>{
-        deleteEvent(event);
-      });
-
-      body.appendChild(del);
+      body.append(edit,del);
     }
 
     card.append(img,body);
@@ -1089,6 +1174,32 @@ async function loadEvents() {
   });
 }
 
+
+function startEditEvent(event) {
+  if(!isAdmin) return;
+  editingEventId=event.id;
+  editingEventImagePath=event.image_path;
+
+  $('eventName').value=event.event_name||'';
+  $('eventDate').value=event.event_date||'';
+  $('eventTime').value=(event.event_time||'').slice(0,5);
+  $('eventLocation').value=event.location||'';
+  $('eventPhoto').value='';
+  $('eventPhoto').required=false;
+  $('eventPhoto').previousElementSibling.textContent='Replace event picture (optional)';
+  $('saveEventBtn').textContent='Save event changes';
+  $('adminEventSection').scrollIntoView({behavior:'smooth',block:'start'});
+  showMessage('eventMessage','Editing event. Leave the photo empty to keep the existing picture.');
+}
+
+function resetEventEditor() {
+  editingEventId=null;
+  editingEventImagePath=null;
+  $('eventForm').reset();
+  $('eventPhoto').required=true;
+  $('eventPhoto').previousElementSibling.textContent='Event picture *';
+  $('saveEventBtn').textContent='Add event';
+}
 
 async function deleteEvent(event) {
   if(!isAdmin) return;
@@ -1123,7 +1234,6 @@ async function deleteEvent(event) {
 
 $('eventForm').addEventListener('submit',async event=>{
   event.preventDefault();
-
   hideMessage('eventMessage');
 
   if(!isAdmin) {
@@ -1132,50 +1242,49 @@ $('eventForm').addEventListener('submit',async event=>{
   }
 
   const file=$('eventPhoto').files[0];
+  const allowedTypes=['image/jpeg','image/png','image/webp','image/gif','image/avif'];
 
-  if(!file) {
-    showMessage('eventMessage','Please select an event picture.',true);
-    return;
-  }
-
-  const allowedTypes=[
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-    'image/gif',
-    'image/avif'
-  ];
-
-  if(!allowedTypes.includes(file.type)) {
+  if(file && !allowedTypes.includes(file.type)) {
     showMessage('eventMessage','Please upload a JPG, PNG, WEBP, GIF or AVIF image.',true);
     return;
   }
 
-  if(file.size>5*1024*1024) {
+  if(file && file.size>5*1024*1024) {
     showMessage('eventMessage','The picture must be smaller than 5 MB.',true);
+    return;
+  }
+
+  if(!editingEventId && !file) {
+    showMessage('eventMessage','Please select an event picture.',true);
     return;
   }
 
   const button=$('saveEventBtn');
   button.disabled=true;
-  button.textContent='Uploading…';
+  button.textContent=editingEventId?'Saving changes…':'Uploading…';
 
-  const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-  const imagePath=`${crypto.randomUUID()}-${safeName}`;
+  let imagePath=editingEventImagePath;
+  let uploadedNewImage=false;
 
-  const {error:uploadError}=await db.storage
-    .from('other-events')
-    .upload(imagePath,file,{
-      cacheControl:'3600',
-      upsert:false,
-      contentType:file.type
-    });
+  if(file) {
+    const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    imagePath=`${crypto.randomUUID()}-${safeName}`;
 
-  if(uploadError) {
-    showMessage('eventMessage',`Photo upload failed: ${uploadError.message}`,true);
-    button.disabled=false;
-    button.textContent='Add event';
-    return;
+    const {error:uploadError}=await db.storage
+      .from('other-events')
+      .upload(imagePath,file,{
+        cacheControl:'3600',
+        upsert:false,
+        contentType:file.type
+      });
+
+    if(uploadError) {
+      showMessage('eventMessage',`Photo upload failed: ${uploadError.message}`,true);
+      button.disabled=false;
+      button.textContent=editingEventId?'Save event changes':'Add event';
+      return;
+    }
+    uploadedNewImage=true;
   }
 
   const payload={
@@ -1186,27 +1295,34 @@ $('eventForm').addEventListener('submit',async event=>{
     image_path:imagePath
   };
 
-  const {error:insertError}=await db
-    .from('other_events')
-    .insert(payload);
+  let saveError=null;
+  if(editingEventId) {
+    const result=await db.from('other_events')
+      .update(payload)
+      .eq('id',editingEventId);
+    saveError=result.error;
+  } else {
+    const result=await db.from('other_events').insert(payload);
+    saveError=result.error;
+  }
 
-  if(insertError) {
-    await db.storage.from('other-events').remove([imagePath]);
-
-    showMessage('eventMessage',`Could not save event: ${insertError.message}`,true);
-
+  if(saveError) {
+    if(uploadedNewImage) await db.storage.from('other-events').remove([imagePath]);
+    showMessage('eventMessage',`Could not save event: ${saveError.message}`,true);
     button.disabled=false;
-    button.textContent='Add event';
+    button.textContent=editingEventId?'Save event changes':'Add event';
     return;
   }
 
-  $('eventForm').reset();
+  if(editingEventId && uploadedNewImage && editingEventImagePath) {
+    const {error:removeError}=await db.storage.from('other-events').remove([editingEventImagePath]);
+    if(removeError) console.error('Could not remove previous event photo:',removeError);
+  }
 
+  const wasEditing=!!editingEventId;
+  resetEventEditor();
   button.disabled=false;
-  button.textContent='Add event';
-
-  showMessage('eventMessage','Your event has been added successfully!');
-
+  showMessage('eventMessage',wasEditing?'Event updated successfully!':'Your event has been added successfully!');
   await loadEvents();
 });
 
@@ -1221,9 +1337,14 @@ $('markDiscussedBtn').addEventListener('click',async()=>{
   $('markDiscussedBtn').disabled=true;
   hideMessage('heroMessage');
 
+  const pastBooks=booksCache.filter(b=>b.section==='past');
+  const nextPastOrder=pastBooks.length
+    ?Math.max(...pastBooks.map(b=>Number(b.display_order)||0))+1
+    :0;
+
   const {error}=await db
     .from('books')
-    .update({section:'past'})
+    .update({section:'past',display_order:nextPastOrder})
     .eq('id',currentBookId)
     .eq('section','current');
 
@@ -1254,8 +1375,15 @@ $('bookForm').addEventListener('submit',async event=>{
 
   const date=$('bookDate').value||null;
 
+  const selectedSection=$('bookSection').value;
+  const sectionBooks=booksCache.filter(b=>b.section===selectedSection);
+  const nextDisplayOrder=sectionBooks.length
+    ?Math.max(...sectionBooks.map(b=>Number(b.display_order)||0))+1
+    :0;
+
   const payload={
-    section:$('bookSection').value,
+    section:selectedSection,
+    display_order:nextDisplayOrder,
     title:$('bookTitle').value.trim(),
     author:$('bookAuthor').value.trim()||null,
     cover_url:$('bookCover').value.trim()||null,
@@ -1268,9 +1396,14 @@ $('bookForm').addEventListener('submit',async event=>{
   };
 
   if(payload.section==='current') {
+    const pastBooks=booksCache.filter(b=>b.section==='past');
+    const nextPastOrder=pastBooks.length
+      ?Math.max(...pastBooks.map(b=>Number(b.display_order)||0))+1
+      :0;
+
     const {error:clearError}=await db
       .from('books')
-      .update({section:'past'})
+      .update({section:'past',display_order:nextPastOrder})
       .eq('section','current');
 
     if(clearError) {
