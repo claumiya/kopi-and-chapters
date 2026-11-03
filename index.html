@@ -1,522 +1,1597 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kopi & Chapters — Book Club</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    :root {
-      --paper:#faf7f0; --card:#fffdf8; --ink:#29251f; --muted:#746b60;
-      --line:#e7dfd2; --wine:#713b45; --wine-dark:#572d35; --sage:#e8eee3;
-      --danger:#9b3e3e; --shadow:0 10px 30px rgba(45,35,25,.06);
-    }
-    *{box-sizing:border-box}
-    body{margin:0;background:var(--paper);color:var(--ink);font-family:Georgia,'Times New Roman',serif;line-height:1.6}
-    button,input,select,textarea{font:inherit}
-    button{cursor:pointer}
-    .wrap{max-width:1120px;margin:auto;padding:24px}
-    header{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:16px 0 24px;border-bottom:1px solid var(--line);margin-bottom:28px}
-    h1{font-size:clamp(1.8rem,4vw,2.6rem);margin:0;color:var(--wine);letter-spacing:-.04em}
-    .tagline{margin:2px 0 0;color:var(--muted);font-style:italic}
-    .nav{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .btn{border:1px solid var(--wine);background:var(--wine);color:white;border-radius:7px;padding:9px 15px;font-family:Arial,sans-serif;font-size:.9rem}
-    .btn:hover{background:var(--wine-dark)}
-    .btn.secondary{background:transparent;color:var(--wine)}
-    .btn.danger{background:transparent;color:var(--danger);border-color:#d8baba}
-    .btn.small{padding:6px 10px;font-size:.82rem}
-    .hero{display:grid;grid-template-columns:160px 1fr;gap:28px;align-items:center;background:#f0e9dd;border:1px solid var(--line);border-radius:14px;padding:26px;margin-bottom:36px}
-    .hero img{width:160px;height:235px;object-fit:cover;border-radius:7px;box-shadow:var(--shadow);background:#e3dacd}
-    .eyebrow{font:700 .75rem Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--wine)}
-    h2{font-size:1.8rem;line-height:1.2;margin:8px 0}
-    h3{font-size:1.45rem;margin:0 0 16px}
-    h4{font-size:1.15rem;margin:0 0 4px}
-    .muted{color:var(--muted)}
-    .meta{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0;font: .9rem Arial,sans-serif;color:var(--muted)}
-    .meta span{background:rgba(255,255,255,.55);padding:6px 10px;border-radius:5px}
-    section{margin:34px 0}
-    .section-head{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:16px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:18px}
-    .book{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;box-shadow:0 3px 12px rgba(40,30,20,.025)}
-    .cover{height:190px;background:#eee6da;display:flex;align-items:center;justify-content:center;padding:14px;position:relative}
-    .rating-badge{position:absolute;top:10px;right:10px;background:#fffdf8;border:1px solid var(--line);border-radius:20px;padding:5px 9px;font:700 .78rem Arial,sans-serif;color:var(--wine);box-shadow:var(--shadow)}
-    .rating-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px}
-    .rating-editor{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding:10px;background:#f7f3ec;border-radius:7px}
-    .rating-editor select{width:auto;min-width:155px}
-    .cover img{height:100%;max-width:130px;object-fit:cover;box-shadow:var(--shadow);border-radius:4px}
-    .book-body{padding:17px}
-    .book-body p{margin:5px 0 12px}
-    .details{font: .85rem Arial,sans-serif;color:var(--muted);background:#f7f3ec;padding:10px;border-radius:6px;margin-top:12px}
-    .details div{margin:3px 0}
-    .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px;box-shadow:var(--shadow)}
-    .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
-    label{display:block;font:600 .83rem Arial,sans-serif;margin-bottom:5px}
-    input,select,textarea{width:100%;border:1px solid var(--line);border-radius:6px;padding:10px;background:#fffefa;color:var(--ink)}
-    textarea{min-height:90px;resize:vertical}
-    .field{margin-bottom:12px}
-    .notice{padding:11px 13px;background:var(--sage);border-radius:7px;color:#34452d;margin:12px 0;font: .9rem Arial,sans-serif}
-    .error{background:#f8e9e7;color:#7c2e2e}
-    .hidden{display:none!important}
-    .auth{max-width:500px;margin:0 0 28px auto}
-    .auth-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .stack{display:grid;gap:12px}
-    .item{padding:14px 0;border-bottom:1px solid var(--line)}
-    .item:last-child{border-bottom:0}
-    .item-top{display:flex;justify-content:space-between;gap:12px;align-items:start}
-    .pill{display:inline-block;border-radius:20px;background:#eee6da;padding:3px 9px;font: .75rem Arial,sans-serif;color:var(--wine)}
-    .review{background:#f8f4ed;padding:12px;border-radius:7px;margin:10px 0}
-    footer{text-align:center;border-top:1px solid var(--line);margin-top:50px;padding:24px;color:var(--muted);font: .85rem Arial,sans-serif}
-    .small-note{font: .8rem Arial,sans-serif;color:var(--muted)}
-    @media(max-width:650px){.wrap{padding:16px}.hero{grid-template-columns:1fr;text-align:center}.hero img{margin:auto}.meta{justify-content:center}header{align-items:flex-start;flex-direction:column}.auth{margin:0 0 24px}.auth-row{grid-template-columns:1fr}}
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kopi & Chapters — Book Club</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root {
+  --paper:#faf7f0;
+  --card:#fffdf8;
+  --ink:#29251f;
+  --muted:#746b60;
+  --line:#e7dfd2;
+  --wine:#713b45;
+  --wine-dark:#572d35;
+  --sage:#e8eee3;
+  --danger:#9b3e3e;
+  --shadow:0 10px 30px rgba(45,35,25,.06);
+}
+
+* { box-sizing:border-box; }
+
+body {
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:Georgia,'Times New Roman',serif;
+  line-height:1.6;
+}
+
+button,input,select,textarea { font:inherit; }
+button { cursor:pointer; }
+
+.wrap {
+  max-width:1120px;
+  margin:auto;
+  padding:24px;
+}
+
+header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:20px;
+  padding:16px 0 24px;
+  border-bottom:1px solid var(--line);
+  margin-bottom:28px;
+}
+
+h1 {
+  font-size:clamp(1.8rem,4vw,2.6rem);
+  margin:0;
+  color:var(--wine);
+  letter-spacing:-.04em;
+}
+
+.tagline {
+  margin:2px 0 0;
+  color:var(--muted);
+  font-style:italic;
+}
+
+.nav {
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.btn {
+  border:1px solid var(--wine);
+  background:var(--wine);
+  color:white;
+  border-radius:7px;
+  padding:9px 15px;
+  font-family:Arial,sans-serif;
+  font-size:.9rem;
+}
+
+.btn:hover { background:var(--wine-dark); }
+
+.btn.secondary {
+  background:transparent;
+  color:var(--wine);
+}
+
+.btn.danger {
+  background:transparent;
+  color:var(--danger);
+  border-color:#d8baba;
+}
+
+.btn.small {
+  padding:6px 10px;
+  font-size:.82rem;
+}
+
+.btn:disabled {
+  opacity:.55;
+  cursor:not-allowed;
+}
+
+.hero {
+  display:grid;
+  grid-template-columns:160px 1fr;
+  gap:28px;
+  align-items:center;
+  background:#f0e9dd;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:26px;
+  margin-bottom:36px;
+}
+
+.hero img {
+  width:160px;
+  height:235px;
+  object-fit:cover;
+  border-radius:7px;
+  box-shadow:var(--shadow);
+  background:#e3dacd;
+}
+
+.eyebrow {
+  font:700 .75rem Arial,sans-serif;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--wine);
+}
+
+h2 {
+  font-size:1.8rem;
+  line-height:1.2;
+  margin:8px 0;
+}
+
+h3 {
+  font-size:1.45rem;
+  margin:0 0 16px;
+}
+
+h4 {
+  font-size:1.15rem;
+  margin:0 0 4px;
+}
+
+.muted { color:var(--muted); }
+
+.meta {
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin:14px 0;
+  font:.9rem Arial,sans-serif;
+  color:var(--muted);
+}
+
+.meta span {
+  background:rgba(255,255,255,.55);
+  padding:6px 10px;
+  border-radius:5px;
+}
+
+section { margin:34px 0; }
+
+.section-head {
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  gap:16px;
+  margin-bottom:16px;
+}
+
+.grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(235px,1fr));
+  gap:18px;
+}
+
+.book,.event-card {
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:0 3px 12px rgba(40,30,20,.025);
+}
+
+.cover {
+  height:190px;
+  background:#eee6da;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:14px;
+  position:relative;
+}
+
+.cover img {
+  height:100%;
+  max-width:130px;
+  object-fit:cover;
+  box-shadow:var(--shadow);
+  border-radius:4px;
+}
+
+.rating-badge {
+  position:absolute;
+  top:10px;
+  right:10px;
+  background:#fffdf8;
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:5px 9px;
+  font:700 .78rem Arial,sans-serif;
+  color:var(--wine);
+  box-shadow:var(--shadow);
+}
+
+.book-body { padding:17px; }
+
+.book-body p { margin:5px 0 12px; }
+
+.details {
+  font:.85rem Arial,sans-serif;
+  color:var(--muted);
+  background:#f7f3ec;
+  padding:10px;
+  border-radius:6px;
+  margin-top:12px;
+}
+
+.details div { margin:3px 0; }
+
+.rating-actions {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+
+.rating-editor {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-top:10px;
+  padding:10px;
+  background:#f7f3ec;
+  border-radius:7px;
+}
+
+.rating-editor select {
+  width:auto;
+  min-width:155px;
+}
+
+.panel {
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:22px;
+  box-shadow:var(--shadow);
+}
+
+.form-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:14px;
+}
+
+label {
+  display:block;
+  font:600 .83rem Arial,sans-serif;
+  margin-bottom:5px;
+}
+
+input,select,textarea {
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:6px;
+  padding:10px;
+  background:#fffefa;
+  color:var(--ink);
+}
+
+textarea {
+  min-height:90px;
+  resize:vertical;
+}
+
+.field { margin-bottom:12px; }
+
+.notice {
+  padding:11px 13px;
+  background:var(--sage);
+  border-radius:7px;
+  color:#34452d;
+  margin:12px 0;
+  font:.9rem Arial,sans-serif;
+}
+
+.error {
+  background:#f8e9e7;
+  color:#7c2e2e;
+}
+
+.hidden { display:none!important; }
+
+.auth {
+  max-width:500px;
+  margin:0 0 28px auto;
+}
+
+.stack {
+  display:grid;
+  gap:12px;
+}
+
+.item {
+  padding:14px 0;
+  border-bottom:1px solid var(--line);
+}
+
+.item:last-child { border-bottom:0; }
+
+.pill {
+  display:inline-block;
+  border-radius:20px;
+  background:#eee6da;
+  padding:3px 9px;
+  font:.75rem Arial,sans-serif;
+  color:var(--wine);
+}
+
+.event-image {
+  width:100%;
+  height:190px;
+  object-fit:cover;
+  display:block;
+  background:#eee6da;
+}
+
+.event-body { padding:17px; }
+
+.event-body h4 { margin-bottom:10px; }
+
+.event-meta {
+  font:.9rem Arial,sans-serif;
+  color:var(--muted);
+}
+
+.event-meta div { margin:5px 0; }
+
+.event-empty {
+  color:var(--muted);
+  padding:15px 0;
+}
+
+.small-note {
+  font:.8rem Arial,sans-serif;
+  color:var(--muted);
+}
+
+footer {
+  text-align:center;
+  border-top:1px solid var(--line);
+  margin-top:50px;
+  padding:24px;
+  color:var(--muted);
+  font:.85rem Arial,sans-serif;
+}
+
+@media(max-width:650px) {
+  .wrap { padding:16px; }
+
+  .hero {
+    grid-template-columns:1fr;
+    text-align:center;
+  }
+
+  .hero img { margin:auto; }
+  .meta { justify-content:center; }
+
+  header {
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .auth { margin:0 0 24px; }
+}
+</style>
 </head>
+
 <body>
 <div class="wrap">
-  <header>
-    <div>
-      <h1>Kopi &amp; Chapters</h1>
-      <p class="tagline">Books, brews &amp; meaningful discussions</p>
-    </div>
-    <div class="nav">
-      <span id="accountLabel" class="small-note">Not signed in</span>
-      <button id="signOutBtn" class="btn secondary hidden" type="button">Sign out</button>
-    </div>
-  </header>
 
-  <section id="authPanel" class="panel auth">
-    <h3>Member sign in</h3>
-    <p class="muted">This is a private book club. Your administrator creates accounts and approves members.</p>
-    <form id="loginForm">
-      <div class="field"><label for="email">Email address</label><input id="email" type="email" required autocomplete="username"></div>
-      <div class="field"><label for="password">Password</label><input id="password" type="password" required autocomplete="current-password"></div>
-      <button class="btn" type="submit">Sign in</button>
-    </form>
-    <div id="authMessage" class="notice hidden" role="status"></div>
-  </section>
+<header>
+  <div>
+    <h1>Kopi &amp; Chapters</h1>
+    <p class="tagline">Books, brews &amp; meaningful discussions</p>
+  </div>
 
-  <section class="hero" id="heroSection">
-    <img id="heroCover" src="https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1742444236i/42152383.jpg" alt="Featured book cover">
-    <div>
-      <span class="eyebrow">Currently reading / next meeting</span>
-      <h2 id="heroTitle">Loading our current book…</h2>
-      <p id="heroAuthor" class="muted"></p>
-      <div class="meta">
-        <span>📅 <b id="heroDate">Date to be announced</b></span>
-        <span>⏰ <b id="heroTime">Time to be announced</b></span>
-        <span>📍 <b id="heroLocation">Location to be announced</b></span>
+  <div class="nav">
+    <span id="accountLabel" class="small-note">Not signed in</span>
+    <button id="signOutBtn" class="btn secondary hidden" type="button">Sign out</button>
+  </div>
+</header>
+
+<!-- MEMBER LOGIN -->
+<section id="authPanel" class="panel auth">
+  <h3>Member sign in</h3>
+  <p class="muted">Your administrator creates accounts and approves members.</p>
+
+  <form id="loginForm">
+    <div class="field">
+      <label for="email">Email address</label>
+      <input id="email" type="email" required autocomplete="username">
+    </div>
+
+    <div class="field">
+      <label for="password">Password</label>
+      <input id="password" type="password" required autocomplete="current-password">
+    </div>
+
+    <button class="btn" type="submit">Sign in</button>
+  </form>
+
+  <div id="authMessage" class="notice hidden"></div>
+</section>
+
+<!-- CURRENT BOOK -->
+<section class="hero" id="heroSection">
+  <img id="heroCover"
+       src="https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1742444236i/42152383.jpg"
+       alt="Featured book cover">
+
+  <div>
+    <span class="eyebrow">Currently reading / next meeting</span>
+    <h2 id="heroTitle">Loading our current book…</h2>
+    <p id="heroAuthor" class="muted"></p>
+
+    <div class="meta">
+      <span>📅 <b id="heroDate">Date to be announced</b></span>
+      <span>⏰ <b id="heroTime">Time to be announced</b></span>
+      <span>📍 <b id="heroLocation">Location to be announced</b></span>
+    </div>
+
+    <p id="heroNotes" class="muted">A shared space for our reading and conversations.</p>
+
+    <button id="markDiscussedBtn" class="btn hidden" type="button">
+      ✓ Mark as Discussed
+    </button>
+
+    <div id="heroMessage" class="notice hidden"></div>
+  </div>
+</section>
+
+<!-- ADMIN BOOK FORM -->
+<section id="adminBookSection" class="panel hidden">
+  <h3>Administrator — add a book</h3>
+
+  <form id="bookForm">
+    <div class="form-grid">
+
+      <div class="field">
+        <label for="bookSection">Section</label>
+        <select id="bookSection">
+          <option value="upcoming">Books we'll discuss</option>
+          <option value="current">Currently reading / next meeting</option>
+          <option value="past">Books we've discussed</option>
+        </select>
       </div>
-      <p id="heroNotes" class="muted">A shared space for our reading and conversations.</p>
-      <button id="markDiscussedBtn" class="btn hidden" type="button">✓ Mark as Discussed</button>
-      <div id="heroMessage" class="notice hidden" role="status"></div>
-    </div>
-  </section>
 
-  <section id="adminBookSection" class="panel hidden">
-    <h3>Administrator — add a book</h3>
-    <p class="muted">Only your administrator account can add, edit or remove official book entries.</p>
-    <form id="bookForm">
+      <div class="field">
+        <label for="bookTitle">Book title *</label>
+        <input id="bookTitle" required>
+      </div>
+
+      <div class="field">
+        <label for="bookAuthor">Author</label>
+        <input id="bookAuthor">
+      </div>
+
+      <div class="field">
+        <label for="bookCover">Cover image URL</label>
+        <input id="bookCover" type="url" placeholder="https://…">
+      </div>
+
+      <div class="field">
+        <label for="bookDate">Meeting date</label>
+        <input id="bookDate" type="date">
+      </div>
+
+      <div class="field">
+        <label for="bookTime">Meeting time</label>
+        <input id="bookTime" type="time">
+      </div>
+
+      <div class="field">
+        <label for="bookLocation">Meeting location</label>
+        <input id="bookLocation">
+      </div>
+
+    </div>
+
+    <div class="field">
+      <label for="bookNotes">Description / notes</label>
+      <textarea id="bookNotes"></textarea>
+    </div>
+
+    <button class="btn" type="submit">Save book</button>
+  </form>
+
+  <div id="bookMessage" class="notice hidden"></div>
+</section>
+
+<!-- UPCOMING BOOKS -->
+<section>
+  <div class="section-head">
+    <h3>Books we'll discuss</h3>
+    <span class="pill">Upcoming</span>
+  </div>
+
+  <div id="upcomingGrid" class="grid">
+    <p class="muted">Loading books…</p>
+  </div>
+</section>
+
+<!-- PAST BOOKS -->
+<section>
+  <div class="section-head">
+    <h3>Books we've discussed</h3>
+    <span class="pill">Reading history</span>
+  </div>
+
+  <div id="pastGrid" class="grid">
+    <p class="muted">Loading books…</p>
+  </div>
+</section>
+
+<!-- OTHER EVENTS -->
+<section>
+  <div class="section-head">
+    <h3>Other Events</h3>
+    <span class="pill">Beyond the books</span>
+  </div>
+
+  <div id="eventsGrid" class="grid">
+    <p class="muted">Loading events…</p>
+  </div>
+</section>
+
+<!-- ADMIN EVENT FORM -->
+<section id="adminEventSection" class="panel hidden">
+  <h3>Administrator — add an event</h3>
+
+  <p class="muted">
+    Add club activities, social gatherings and other special events.
+  </p>
+
+  <form id="eventForm">
+
+    <div class="form-grid">
+
+      <div class="field">
+        <label for="eventName">Event name *</label>
+        <input id="eventName" required placeholder="e.g. Book Club Dinner">
+      </div>
+
+      <div class="field">
+        <label for="eventDate">Date *</label>
+        <input id="eventDate" type="date" required>
+      </div>
+
+      <div class="field">
+        <label for="eventTime">Time *</label>
+        <input id="eventTime" type="time" required>
+      </div>
+
+      <div class="field">
+        <label for="eventLocation">Location *</label>
+        <input id="eventLocation" required placeholder="Event venue">
+      </div>
+
+    </div>
+
+    <div class="field">
+      <label for="eventPhoto">Event picture *</label>
+      <input
+        id="eventPhoto"
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+        required
+      >
+      <p class="small-note">Maximum file size: 5 MB.</p>
+    </div>
+
+    <button id="saveEventBtn" class="btn" type="submit">
+      Add event
+    </button>
+
+  </form>
+
+  <div id="eventMessage" class="notice hidden"></div>
+</section>
+
+<!-- MEMBER BOOK SUGGESTIONS -->
+<section id="memberArea" class="hidden">
+  <div class="panel">
+    <h3>Suggest a book</h3>
+
+    <form id="suggestionForm">
       <div class="form-grid">
-        <div class="field"><label for="bookSection">Section</label><select id="bookSection"><option value="upcoming">Books we'll discuss</option><option value="current">Currently reading / next meeting</option><option value="past">Books we've discussed</option></select></div>
-        <div class="field"><label for="bookTitle">Book title *</label><input id="bookTitle" required></div>
-        <div class="field"><label for="bookAuthor">Author</label><input id="bookAuthor"></div>
-        <div class="field"><label for="bookCover">Cover image URL</label><input id="bookCover" type="url" placeholder="https://…"></div>
-        <div class="field"><label for="bookDate">Meeting date</label><input id="bookDate" type="date"></div>
-        <div class="field"><label for="bookTime">Meeting time</label><input id="bookTime" type="time"></div>
-        <div class="field"><label for="bookLocation">Meeting location</label><input id="bookLocation"></div>
-      </div>
-      <div class="field"><label for="bookNotes">Description / notes</label><textarea id="bookNotes"></textarea></div>
-      <button class="btn" type="submit">Save book</button>
-    </form>
-    <div id="bookMessage" class="notice hidden" role="status"></div>
-  </section>
 
-  <section>
-    <div class="section-head"><h3>Books we'll discuss</h3><span class="pill">Upcoming</span></div>
-    <div id="upcomingGrid" class="grid"><p class="muted">Loading books…</p></div>
-  </section>
-  <section>
-    <div class="section-head"><h3>Books we've discussed</h3><span class="pill">Reading history</span></div>
-    <div id="pastGrid" class="grid"><p class="muted">Loading books…</p></div>
-  </section>
-
-  <section id="memberArea" class="hidden">
-    <div class="panel">
-      <h3>Suggest a book</h3>
-      <form id="suggestionForm">
-        <div class="form-grid">
-          <div class="field"><label for="suggestTitle">Book title *</label><input id="suggestTitle" required></div>
-          <div class="field"><label for="suggestAuthor">Author</label><input id="suggestAuthor"></div>
+        <div class="field">
+          <label for="suggestTitle">Book title *</label>
+          <input id="suggestTitle" required>
         </div>
-        <div class="field"><label for="suggestReason">Why should we read it?</label><textarea id="suggestReason"></textarea></div>
-        <button class="btn" type="submit">Submit suggestion</button>
-      </form>
-      <div id="suggestionMessage" class="notice hidden" role="status"></div>
-    </div>
-  </section>
 
-  <section id="suggestionsSection" class="hidden">
-    <h3>Book suggestions</h3>
-    <div id="suggestionsList" class="panel stack"></div>
-  </section>
+        <div class="field">
+          <label for="suggestAuthor">Author</label>
+          <input id="suggestAuthor">
+        </div>
 
-  <section id="adminMembersSection" class="panel hidden">
-    <h3>Administrator — approve members</h3>
-    <p class="muted">First create a member account in Supabase Authentication → Users. Then paste that user's UUID below to approve them.</p>
-    <form id="approveForm">
-      <div class="field"><label for="memberUuid">New member's User ID (UUID)</label><input id="memberUuid" required placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></div>
-      <button class="btn" type="submit">Approve member</button>
+      </div>
+
+      <div class="field">
+        <label for="suggestReason">Why should we read it?</label>
+        <textarea id="suggestReason"></textarea>
+      </div>
+
+      <button class="btn" type="submit">Submit suggestion</button>
     </form>
-    <div id="approvalMessage" class="notice hidden" role="status"></div>
-    <h4 style="margin-top:20px">Approved members</h4>
-    <div id="approvedList" class="stack muted">Sign in as administrator to load this list.</div>
-  </section>
 
-  <section id="discussionSection">
-    <h3>Reviews &amp; discussions</h3>
-    <p class="muted">Sign in as an approved member to read and contribute to book discussions.</p>
-    <div id="discussionBooks" class="stack"></div>
-  </section>
+    <div id="suggestionMessage" class="notice hidden"></div>
+  </div>
+</section>
 
-  <footer>© 2026 Kopi &amp; Chapters Book Club · Read. Share. Discover.</footer>
+<!-- ADMIN BOOK SUGGESTIONS -->
+<section id="suggestionsSection" class="hidden">
+  <h3>Book suggestions</h3>
+  <div id="suggestionsList" class="panel stack"></div>
+</section>
+
+<!-- ADMIN MEMBER APPROVAL -->
+<section id="adminMembersSection" class="panel hidden">
+  <h3>Administrator — approve members</h3>
+
+  <p class="muted">
+    Create a member account in Supabase Authentication → Users.
+    Then paste that user's UUID below to approve them.
+  </p>
+
+  <form id="approveForm">
+    <div class="field">
+      <label for="memberUuid">New member's User ID (UUID)</label>
+      <input id="memberUuid" required
+             placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+    </div>
+
+    <button class="btn" type="submit">Approve member</button>
+  </form>
+
+  <div id="approvalMessage" class="notice hidden"></div>
+
+  <h4 style="margin-top:20px">Approved members</h4>
+  <div id="approvedList" class="stack muted">
+    Sign in as administrator to load this list.
+  </div>
+</section>
+
+<footer>
+  © 2026 Kopi &amp; Chapters Book Club · Read. Share. Discover.
+</footer>
+
 </div>
 
 <script>
-  const SUPABASE_URL = 'https://txxcfnbbcrnohzavlivk.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_DR0CXZ5W5UzYqoUtymUtkg_Zt5bf60G';
-  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-  const DEFAULT_COVER = 'https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1742444236i/42152383.jpg';
+/* SUPABASE CONNECTION */
 
-  let currentUser = null;
-  let isAdmin = false;
-  let isApproved = false;
-  let booksCache = [];
-  let ratingsCache = [];
-  let currentBookId = null;
+const SUPABASE_URL = 'https://txxcfnbbcrnohzavlivk.supabase.co';
 
-  const $ = (id) => document.getElementById(id);
-  const showMessage = (id, message, isError=false) => {
-    const el = $(id); el.textContent = message; el.classList.remove('hidden');
-    el.classList.toggle('error', isError);
+const SUPABASE_PUBLISHABLE_KEY =
+  'sb_publishable_DR0CXZ5W5UzYqoUtymUtkg_Zt5bf60G';
+
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+
+const DEFAULT_COVER =
+  'https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1742444236i/42152383.jpg';
+
+let currentUser = null;
+let isAdmin = false;
+let isApproved = false;
+let booksCache = [];
+let ratingsCache = [];
+let currentBookId = null;
+
+const $ = id => document.getElementById(id);
+
+function showMessage(id,message,isError=false) {
+  const el=$(id);
+  el.textContent=message;
+  el.classList.remove('hidden');
+  el.classList.toggle('error',isError);
+}
+
+function hideMessage(id) {
+  $(id).classList.add('hidden');
+}
+
+function safeText(value,fallback='') {
+  return value==null || value==='' ? fallback : String(value);
+}
+
+function displayDate(value) {
+  if(!value) return 'TBD';
+  return new Date(value+'T00:00:00').toLocaleDateString();
+}
+
+function displayTime(value) {
+  if(!value) return 'TBD';
+
+  const [h,m]=value.split(':');
+  const hour=Number(h);
+
+  return `${hour%12||12}:${m} ${hour>=12?'PM':'AM'}`;
+}
+
+
+/* BOOK RATINGS */
+
+function makeBookCard(book) {
+  const article=document.createElement('article');
+  article.className='book';
+
+  const cover=document.createElement('div');
+  cover.className='cover';
+
+  const img=document.createElement('img');
+  img.src=book.cover_url||DEFAULT_COVER;
+  img.alt=`Cover of ${safeText(book.title,'book')}`;
+
+  img.onerror=()=>{
+    img.onerror=null;
+    img.src=DEFAULT_COVER;
   };
-  const hideMessage = (id) => $(id).classList.add('hidden');
-  const safeText = (value, fallback='') => value == null || value === '' ? fallback : String(value);
-  const displayDate = (value) => value ? new Date(value + 'T00:00:00').toLocaleDateString() : 'TBD';
-  const displayTime = (value) => {
-    if (!value) return 'TBD';
-    const [h,m] = value.split(':'); const hour = Number(h);
-    return `${hour % 12 || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
-  };
 
-  function makeBookCard(book) {
-    const article = document.createElement('article'); article.className = 'book';
-    const cover = document.createElement('div'); cover.className = 'cover';
-    const img = document.createElement('img'); img.src = book.cover_url || DEFAULT_COVER;
-    img.alt = `Cover of ${safeText(book.title, 'book')}`;
-    img.onerror = () => { img.onerror = null; img.src = DEFAULT_COVER; };
-    cover.appendChild(img);
+  cover.appendChild(img);
 
-    const bookRatings = ratingsCache.filter(r => r.book_id === book.id);
-    const average = bookRatings.length ? bookRatings.reduce((sum, r) => sum + Number(r.rating), 0) / bookRatings.length : null;
-    const badge = document.createElement('span'); badge.className = 'rating-badge';
-    badge.textContent = average === null ? '☆ No ratings' : `★ ${average.toFixed(1)} (${bookRatings.length})`;
-    cover.appendChild(badge);
+  const bookRatings=ratingsCache.filter(
+    r=>String(r.book_id)===String(book.id)
+  );
 
-    const body = document.createElement('div'); body.className = 'book-body';
-    const title = document.createElement('h4'); title.textContent = safeText(book.title, 'Untitled');
-    const author = document.createElement('p'); author.className = 'muted'; author.textContent = book.author ? `by ${book.author}` : 'Author not listed';
-    const details = document.createElement('div'); details.className = 'details';
-    [['Date',displayDate(book.meeting_date)],['Time',displayTime(book.meeting_time)],['Location',safeText(book.meeting_location,'TBD')]].forEach(([label,value])=>{
-      const row=document.createElement('div'); row.textContent=`${label}: ${value}`; details.appendChild(row);
-    });
+  const average=bookRatings.length
+    ? bookRatings.reduce((sum,r)=>sum+Number(r.rating),0)/bookRatings.length
+    : null;
 
-    body.append(title,author);
-    if (book.notes) { const note=document.createElement('p'); note.className='muted'; note.textContent=book.notes; body.appendChild(note); }
-    body.appendChild(details);
+  const badge=document.createElement('span');
+  badge.className='rating-badge';
 
-    const ratingActions = document.createElement('div'); ratingActions.className = 'rating-actions';
-    const rateButton = document.createElement('button'); rateButton.className = 'btn secondary small'; rateButton.type = 'button'; rateButton.textContent = 'RATING';
-    rateButton.addEventListener('click', () => openRatingEditor(book, body, rateButton));
-    ratingActions.appendChild(rateButton);
-    body.appendChild(ratingActions);
+  badge.textContent=average===null
+    ? '☆ No ratings'
+    : `★ ${average.toFixed(1)} (${bookRatings.length})`;
 
-    if (isAdmin) {
-      const del=document.createElement('button'); del.className='btn danger small'; del.type='button'; del.textContent='Delete';
-      del.addEventListener('click',()=>deleteBook(book.id)); body.appendChild(del);
-    }
-    article.append(cover,body); return article;
+  cover.appendChild(badge);
+
+  const body=document.createElement('div');
+  body.className='book-body';
+
+  const title=document.createElement('h4');
+  title.textContent=safeText(book.title,'Untitled');
+
+  const author=document.createElement('p');
+  author.className='muted';
+  author.textContent=book.author?`by ${book.author}`:'Author not listed';
+
+  body.append(title,author);
+
+  if(book.notes) {
+    const note=document.createElement('p');
+    note.className='muted';
+    note.textContent=book.notes;
+    body.appendChild(note);
   }
 
-  function openRatingEditor(book, body, trigger) {
-    const existing = body.querySelector('.rating-editor');
-    if (existing) { existing.remove(); return; }
-    if (!currentUser || !isApproved) {
-      alert('Please sign in with an approved member account to rate a book.');
+  const details=document.createElement('div');
+  details.className='details';
+
+  [
+    ['Date',displayDate(book.meeting_date)],
+    ['Time',displayTime(book.meeting_time)],
+    ['Location',safeText(book.meeting_location,'TBD')]
+  ].forEach(([label,value])=>{
+    const row=document.createElement('div');
+    row.textContent=`${label}: ${value}`;
+    details.appendChild(row);
+  });
+
+  body.appendChild(details);
+
+  const actions=document.createElement('div');
+  actions.className='rating-actions';
+
+  const rateButton=document.createElement('button');
+  rateButton.className='btn secondary small';
+  rateButton.type='button';
+  rateButton.textContent='RATING';
+
+  rateButton.addEventListener('click',()=>{
+    openRatingEditor(book,body,rateButton);
+  });
+
+  actions.appendChild(rateButton);
+  body.appendChild(actions);
+
+  if(isAdmin) {
+    const del=document.createElement('button');
+    del.className='btn danger small';
+    del.type='button';
+    del.textContent='Delete';
+
+    del.addEventListener('click',()=>deleteBook(book.id));
+
+    body.appendChild(del);
+  }
+
+  article.append(cover,body);
+
+  return article;
+}
+
+
+function openRatingEditor(book,body,trigger) {
+  const existing=body.querySelector('.rating-editor');
+
+  if(existing) {
+    existing.remove();
+    return;
+  }
+
+  if(!currentUser||!isApproved) {
+    alert('Please sign in with an approved member account to rate a book.');
+    return;
+  }
+
+  const editor=document.createElement('form');
+  editor.className='rating-editor';
+
+  const label=document.createElement('label');
+  label.textContent='Your rating';
+  label.style.margin='0';
+
+  const select=document.createElement('select');
+  select.required=true;
+
+  select.innerHTML=`
+    <option value="">Choose 1–5 stars</option>
+    <option value="5">★★★★★ — 5</option>
+    <option value="4">★★★★☆ — 4</option>
+    <option value="3">★★★☆☆ — 3</option>
+    <option value="2">★★☆☆☆ — 2</option>
+    <option value="1">★☆☆☆☆ — 1</option>
+  `;
+
+  const previous=ratingsCache.find(
+    r=>String(r.book_id)===String(book.id)
+      &&r.user_id===currentUser.id
+  );
+
+  if(previous) select.value=String(previous.rating);
+
+  const save=document.createElement('button');
+  save.className='btn small';
+  save.type='submit';
+  save.textContent=previous?'Update rating':'Submit rating';
+
+  editor.append(label,select,save);
+
+  trigger.parentElement.insertAdjacentElement('afterend',editor);
+
+  editor.addEventListener('submit',async event=>{
+    event.preventDefault();
+
+    if(!select.value) {
+      alert('Please choose a rating from 1 to 5.');
       return;
     }
 
-    const editor = document.createElement('form'); editor.className = 'rating-editor';
-    const label = document.createElement('label'); label.textContent = 'Your rating'; label.style.margin = '0';
-    const select = document.createElement('select'); select.required = true;
-    select.innerHTML = '<option value="">Choose 1–5 stars</option><option value="5">★★★★★ — 5</option><option value="4">★★★★☆ — 4</option><option value="3">★★★☆☆ — 3</option><option value="2">★★☆☆☆ — 2</option><option value="1">★☆☆☆☆ — 1</option>';
+    save.disabled=true;
 
-    const previous = ratingsCache.find(r => r.book_id === book.id && r.user_id === currentUser.id);
-    if (previous) select.value = String(previous.rating);
-
-    const save = document.createElement('button'); save.className = 'btn small'; save.type = 'submit'; save.textContent = previous ? 'Update rating' : 'Submit rating';
-    editor.append(label, select, save);
-    trigger.parentElement.insertAdjacentElement('afterend', editor);
-
-    editor.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      if (!select.value) { alert('Please choose a rating from 1 to 5.'); return; }
-      save.disabled = true;
-
-      const { error } = await db.from('book_ratings').upsert({
-        book_id: book.id, user_id: currentUser.id, rating: Number(select.value)
-      }, { onConflict: 'book_id,user_id' });
-
-      if (error) { alert(`Could not save your rating: ${error.message}`); save.disabled = false; return; }
-      await loadBooks();
+    const {error}=await db.from('book_ratings').upsert({
+      book_id:book.id,
+      user_id:currentUser.id,
+      rating:Number(select.value)
+    },{
+      onConflict:'book_id,user_id'
     });
-  }
 
-  async function loadRatings() {
-    const { data, error } = await db.from('book_ratings').select('book_id,user_id,rating');
-    if (error) { console.error('Could not load book ratings:', error); ratingsCache = []; return; }
-    ratingsCache = data || [];
-  }
-
-  async function loadBooks() {
-    const {data,error}=await db.from('books').select('*').order('created_at',{ascending:false});
-    if(error){ $('upcomingGrid').textContent='Could not load books. Check the database setup and connection.'; console.error(error); return; }
-
-    booksCache=data||[];
-    await loadRatings();
-
-    const upcoming=booksCache.filter(b=>b.section==='upcoming');
-    const past=booksCache.filter(b=>b.section==='past');
-    $('upcomingGrid').replaceChildren();
-    $('pastGrid').replaceChildren();
-
-    upcoming.forEach(b=>$('upcomingGrid').appendChild(makeBookCard(b)));
-    past.forEach(b=>$('pastGrid').appendChild(makeBookCard(b)));
-
-    if(!upcoming.length) $('upcomingGrid').textContent='No upcoming books have been added yet.';
-    if(!past.length) $('pastGrid').textContent='Our reading history will appear here.';
-
-    const current=booksCache.find(b=>b.section==='current');
-    currentBookId = current ? current.id : null;
-    $('markDiscussedBtn').classList.toggle('hidden', !(isAdmin && current));
-    $('heroTitle').textContent=current ? current.title : 'Choose our next book';
-    $('heroAuthor').textContent=current?.author ? `by ${current.author}` : 'Our next shared read will appear here.';
-    $('heroCover').src=current?.cover_url || DEFAULT_COVER;
-    $('heroCover').onerror=()=>{$('heroCover').src=DEFAULT_COVER;};
-    $('heroDate').textContent=current ? displayDate(current.meeting_date) : 'TBD';
-    $('heroTime').textContent=current ? displayTime(current.meeting_time) : 'TBD';
-    $('heroLocation').textContent=current ? safeText(current.meeting_location,'TBD') : 'TBD';
-    $('heroNotes').textContent=current?.notes || 'A shared space for our reading and conversations.';
-
-    renderDiscussionBooks();
-  }
-
-  function renderDiscussionBooks() {
-    const target=$('discussionBooks'); target.replaceChildren();
-    booksCache.forEach(book=>{
-      const row=document.createElement('div'); row.className='item';
-      const heading=document.createElement('h4'); heading.textContent=book.title;
-      const sub=document.createElement('p'); sub.className='muted'; sub.textContent=book.author ? `by ${book.author}` : '';
-      const button=document.createElement('button'); button.className='btn secondary small'; button.type='button'; button.textContent='View discussion';
-      button.addEventListener('click',()=>loadDiscussion(book));
-      row.append(heading,sub,button); target.appendChild(row);
-    });
-    if(!booksCache.length) target.textContent='Book discussions will appear once books are added.';
-  }
-
-  async function loadDiscussion(book) {
-    const target=$('discussionBooks');
-    let box=document.getElementById(`discussion-${book.id}`);
-    if(box){box.remove();return;}
-    box=document.createElement('div'); box.id=`discussion-${book.id}`; box.className='panel'; box.textContent='Loading discussion…';
-    target.appendChild(box);
-
-    if(!currentUser || !isApproved){box.textContent='Please sign in with an approved member account to view discussions.';return;}
-
-    const [reviewsResult,commentsResult]=await Promise.all([
-      db.from('reviews').select('rating,review_text,created_at,user_id').eq('book_id',book.id).order('created_at',{ascending:false}),
-      db.from('comments').select('comment_text,created_at,user_id').eq('book_id',book.id).order('created_at',{ascending:false})
-    ]);
-
-    box.replaceChildren();
-    const heading=document.createElement('h4'); heading.textContent=`Discussion: ${book.title}`; box.appendChild(heading);
-
-    if(reviewsResult.error || commentsResult.error){const err=document.createElement('p');err.className='muted';err.textContent='Could not load discussion. Please check the reviews and comments table permissions.';box.appendChild(err);return;}
-
-    const reviewTitle=document.createElement('h4');reviewTitle.textContent='Reviews';box.appendChild(reviewTitle);
-    (reviewsResult.data||[]).forEach(r=>{
-      const item=document.createElement('div');item.className='review';
-      const rating=document.createElement('strong');rating.textContent=`${'★'.repeat(r.rating||0)}${'☆'.repeat(5-(r.rating||0))}`;
-      const txt=document.createElement('p');txt.textContent=r.review_text||'Rating only';
-      item.append(rating,txt);box.appendChild(item);
-    });
-    if(!(reviewsResult.data||[]).length){const p=document.createElement('p');p.className='muted';p.textContent='No reviews yet.';box.appendChild(p);}
-
-    const commentTitle=document.createElement('h4');commentTitle.textContent='Comments';commentTitle.style.marginTop='16px';box.appendChild(commentTitle);
-    (commentsResult.data||[]).forEach(c=>{const p=document.createElement('p');p.className='review';p.textContent=c.comment_text;box.appendChild(p);});
-    if(!(commentsResult.data||[]).length){const p=document.createElement('p');p.className='muted';p.textContent='No comments yet.';box.appendChild(p);}
-
-    const form=document.createElement('form');form.className='stack';form.style.marginTop='16px';
-    const ratingLabel=document.createElement('label');ratingLabel.textContent='Your rating';
-    const ratingSelect=document.createElement('select');ratingSelect.innerHTML='<option value="">No rating</option><option value="5">5 — Loved it</option><option value="4">4 — Very good</option><option value="3">3 — Good</option><option value="2">2 — Not for me</option><option value="1">1 — Disappointing</option>';
-    const reviewInput=document.createElement('textarea');reviewInput.placeholder='Write a review (optional)';
-    const commentInput=document.createElement('textarea');commentInput.placeholder='Add a comment (optional)';
-    const submit=document.createElement('button');submit.className='btn';submit.type='submit';submit.textContent='Post review / comment';
-    form.append(ratingLabel,ratingSelect,reviewInput,commentInput,submit);box.appendChild(form);
-
-    form.addEventListener('submit',async(e)=>{
-      e.preventDefault(); const rating=ratingSelect.value; const review=reviewInput.value.trim(); const comment=commentInput.value.trim();
-      if(!rating && !review && !comment){alert('Please add a rating, review or comment.');return;}
-      submit.disabled=true;
-      let error=null;
-      if(rating || review){const res=await db.from('reviews').insert({book_id:book.id,user_id:currentUser.id,rating:rating?Number(rating):null,review_text:review||null});error=res.error;}
-      if(!error && comment){const res=await db.from('comments').insert({book_id:book.id,user_id:currentUser.id,comment_text:comment});error=res.error;}
-      if(error){alert(error.message);submit.disabled=false;return;}
-      await loadDiscussion(book);
-    });
-  }
-
-  async function checkMembership() {
-    if(!currentUser){isAdmin=false;isApproved=false;return;}
-    const [adminRes,approvedRes]=await Promise.all([
-      db.rpc('is_book_club_admin'),
-      db.rpc('is_approved_member')
-    ]);
-    isAdmin=adminRes.data===true;
-    isApproved=isAdmin || approvedRes.data===true;
-  }
-
-  async function loadSuggestions() {
-    if(!isApproved)return;
-    const {data,error}=await db.from('book_suggestions').select('*').order('created_at',{ascending:false});
-    const list=$('suggestionsList');list.replaceChildren();
-    if(error){list.textContent='Could not load suggestions.';return;}
-    (data||[]).forEach(s=>{
-      const item=document.createElement('div');item.className='item';
-      const title=document.createElement('h4');title.textContent=s.title;
-      const author=document.createElement('p');author.className='muted';author.textContent=s.author||'Author not listed';
-      const reason=document.createElement('p');reason.textContent=s.reason||'';
-      const status=document.createElement('span');status.className='pill';status.textContent=s.status;
-      item.append(title,author,reason,status);
-
-      if(isAdmin){
-        const select=document.createElement('select');
-        ['pending','approved','rejected'].forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;o.selected=s.status===v;select.appendChild(o);});
-        select.addEventListener('change',async()=>{const {error}=await db.from('book_suggestions').update({status:select.value}).eq('id',s.id);if(error)alert(error.message);});
-        item.appendChild(select);
-      }
-      list.appendChild(item);
-    });
-    if(!(data||[]).length)list.textContent='No suggestions yet.';
-  }
-
-  async function loadApprovedMembers() {
-    const list=$('approvedList');list.replaceChildren();
-    const {data,error}=await db.from('approved_members').select('user_id,approved_at').order('approved_at',{ascending:false});
-    if(error){list.textContent='Could not load approved members. Check the administrator policies.';return;}
-    (data||[]).forEach(m=>{
-      const row=document.createElement('div');row.className='item item-top';
-      const id=document.createElement('code');id.textContent=m.user_id;
-      const remove=document.createElement('button');remove.className='btn danger small';remove.type='button';remove.textContent='Remove';
-      remove.addEventListener('click',async()=>{if(!confirm('Remove this member’s approval?'))return;const {error}=await db.from('approved_members').delete().eq('user_id',m.user_id);if(error)alert(error.message);else loadApprovedMembers();});
-      row.append(id,remove);list.appendChild(row);
-    });
-    if(!(data||[]).length)list.textContent='No approved members found.';
-  }
-
-  async function refreshUI() {
-    await checkMembership();
-    $('accountLabel').textContent=currentUser ? currentUser.email : 'Not signed in';
-    $('authPanel').classList.toggle('hidden',!!currentUser);
-    $('signOutBtn').classList.toggle('hidden',!currentUser);
-    $('adminBookSection').classList.toggle('hidden',!isAdmin);
-    $('adminMembersSection').classList.toggle('hidden',!isAdmin);
-    $('memberArea').classList.toggle('hidden',!isApproved);
-    $('suggestionsSection').classList.toggle('hidden',!isApproved);
-    if(isApproved) await loadSuggestions();
-    if(isAdmin) await loadApprovedMembers();
-    await loadBooks();
-  }
-
-  $('loginForm').addEventListener('submit',async(e)=>{
-    e.preventDefault();hideMessage('authMessage');
-    const {data,error}=await db.auth.signInWithPassword({email:$('email').value,password:$('password').value});
-    if(error){showMessage('authMessage',error.message,true);return;}
-    currentUser=data.user;await refreshUI();
-  });
-
-  $('signOutBtn').addEventListener('click',async()=>{await db.auth.signOut();currentUser=null;await refreshUI();});
-
-  $('bookForm').addEventListener('submit',async(e)=>{
-    e.preventDefault();hideMessage('bookMessage');
-    if(!isAdmin){showMessage('bookMessage','Administrator access is required.',true);return;}
-    const date=$('bookDate').value||null;
-    const payload={section:$('bookSection').value,title:$('bookTitle').value.trim(),author:$('bookAuthor').value.trim()||null,cover_url:$('bookCover').value.trim()||null,meeting_date:date,meeting_time:$('bookTime').value||null,meeting_location:$('bookLocation').value.trim()||null,notes:$('bookNotes').value.trim()||null,meeting_month:date?Number(date.slice(5,7)):null,meeting_year:date?Number(date.slice(0,4)):null};
-
-    if(payload.section==='current'){
-      const {error:clearError}=await db.from('books').update({section:'past'}).eq('section','current');
-      if(clearError){showMessage('bookMessage',clearError.message,true);return;}
+    if(error) {
+      alert(`Could not save your rating: ${error.message}`);
+      save.disabled=false;
+      return;
     }
-    const {error}=await db.from('books').insert(payload);
-    if(error){showMessage('bookMessage',error.message,true);return;}
-    $('bookForm').reset();showMessage('bookMessage','Book saved and shared with the club.');await loadBooks();
-  });
 
-  async function deleteBook(id){
-    if(!confirm('Delete this book entry?'))return;
-    const {error}=await db.from('books').delete().eq('id',id);
-    if(error){alert(error.message);return;}await loadBooks();
+    await loadBooks();
+  });
+}
+
+
+async function loadRatings() {
+  const {data,error}=await db
+    .from('book_ratings')
+    .select('book_id,user_id,rating');
+
+  if(error) {
+    console.error('Could not load book ratings:',error);
+    ratingsCache=[];
+    return;
   }
 
-  $('markDiscussedBtn').addEventListener('click', async () => {
-    if (!isAdmin || !currentBookId) return;
-    if (!confirm('Move this book to “Books we’ve discussed”?')) return;
+  ratingsCache=data||[];
+}
 
-    $('markDiscussedBtn').disabled = true;
-    hideMessage('heroMessage');
 
-    const { error } = await db
+/* LOAD BOOKS */
+
+async function loadBooks() {
+  const {data,error}=await db
+    .from('books')
+    .select('*')
+    .order('created_at',{ascending:false});
+
+  if(error) {
+    $('upcomingGrid').textContent='Could not load books.';
+    console.error(error);
+    return;
+  }
+
+  booksCache=data||[];
+
+  await loadRatings();
+
+  const upcoming=booksCache.filter(b=>b.section==='upcoming');
+  const past=booksCache.filter(b=>b.section==='past');
+
+  $('upcomingGrid').replaceChildren();
+  $('pastGrid').replaceChildren();
+
+  upcoming.forEach(b=>{
+    $('upcomingGrid').appendChild(makeBookCard(b));
+  });
+
+  past.forEach(b=>{
+    $('pastGrid').appendChild(makeBookCard(b));
+  });
+
+  if(!upcoming.length) {
+    $('upcomingGrid').textContent='No upcoming books have been added yet.';
+  }
+
+  if(!past.length) {
+    $('pastGrid').textContent='Our reading history will appear here.';
+  }
+
+  const current=booksCache.find(b=>b.section==='current');
+
+  currentBookId=current?current.id:null;
+
+  $('markDiscussedBtn').classList.toggle(
+    'hidden',
+    !(isAdmin&&current)
+  );
+
+  $('heroTitle').textContent=current
+    ?current.title
+    :'Choose our next book';
+
+  $('heroAuthor').textContent=current?.author
+    ?`by ${current.author}`
+    :'Our next shared read will appear here.';
+
+  $('heroCover').src=current?.cover_url||DEFAULT_COVER;
+
+  $('heroCover').onerror=()=>{
+    $('heroCover').src=DEFAULT_COVER;
+  };
+
+  $('heroDate').textContent=current
+    ?displayDate(current.meeting_date)
+    :'TBD';
+
+  $('heroTime').textContent=current
+    ?displayTime(current.meeting_time)
+    :'TBD';
+
+  $('heroLocation').textContent=current
+    ?safeText(current.meeting_location,'TBD')
+    :'TBD';
+
+  $('heroNotes').textContent=current?.notes
+    ||'A shared space for our reading and conversations.';
+}
+
+
+/* OTHER EVENTS */
+
+async function loadEvents() {
+  const grid=$('eventsGrid');
+
+  const {data,error}=await db
+    .from('other_events')
+    .select('*')
+    .order('event_date',{ascending:true});
+
+  if(error) {
+    console.error('Could not load events:',error);
+    grid.textContent='Could not load events. Please check the events database.';
+    return;
+  }
+
+  grid.replaceChildren();
+
+  if(!data||!data.length) {
+    const empty=document.createElement('p');
+    empty.className='event-empty';
+    empty.textContent='No other events have been announced yet.';
+    grid.appendChild(empty);
+    return;
+  }
+
+  data.forEach(event=>{
+    const card=document.createElement('article');
+    card.className='event-card';
+
+    const img=document.createElement('img');
+    img.className='event-image';
+    img.alt=event.event_name;
+
+    const {data:publicData}=db.storage
+      .from('other-events')
+      .getPublicUrl(event.image_path);
+
+    img.src=publicData.publicUrl;
+
+    const body=document.createElement('div');
+    body.className='event-body';
+
+    const title=document.createElement('h4');
+    title.textContent=event.event_name;
+
+    const details=document.createElement('div');
+    details.className='event-meta';
+
+    const date=document.createElement('div');
+    date.textContent=`📅 ${displayDate(event.event_date)}`;
+
+    const time=document.createElement('div');
+    time.textContent=`⏰ ${displayTime(event.event_time)}`;
+
+    const location=document.createElement('div');
+    location.textContent=`📍 ${event.location}`;
+
+    details.append(date,time,location);
+    body.append(title,details);
+
+    if(isAdmin) {
+      const del=document.createElement('button');
+      del.className='btn danger small';
+      del.type='button';
+      del.textContent='Delete event';
+
+      del.style.marginTop='14px';
+
+      del.addEventListener('click',()=>{
+        deleteEvent(event);
+      });
+
+      body.appendChild(del);
+    }
+
+    card.append(img,body);
+    grid.appendChild(card);
+  });
+}
+
+
+async function deleteEvent(event) {
+  if(!isAdmin) return;
+
+  if(!confirm(`Delete "${event.event_name}"?`)) return;
+
+  const {error:deleteError}=await db
+    .from('other_events')
+    .delete()
+    .eq('id',event.id);
+
+  if(deleteError) {
+    alert(`Could not delete event: ${deleteError.message}`);
+    return;
+  }
+
+  if(event.image_path) {
+    const {error:storageError}=await db.storage
+      .from('other-events')
+      .remove([event.image_path]);
+
+    if(storageError) {
+      console.error('Could not remove event photo:',storageError);
+    }
+  }
+
+  await loadEvents();
+}
+
+
+/* ADMIN EVENT UPLOAD */
+
+$('eventForm').addEventListener('submit',async event=>{
+  event.preventDefault();
+
+  hideMessage('eventMessage');
+
+  if(!isAdmin) {
+    showMessage('eventMessage','Administrator access is required.',true);
+    return;
+  }
+
+  const file=$('eventPhoto').files[0];
+
+  if(!file) {
+    showMessage('eventMessage','Please select an event picture.',true);
+    return;
+  }
+
+  const allowedTypes=[
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'image/avif'
+  ];
+
+  if(!allowedTypes.includes(file.type)) {
+    showMessage('eventMessage','Please upload a JPG, PNG, WEBP, GIF or AVIF image.',true);
+    return;
+  }
+
+  if(file.size>5*1024*1024) {
+    showMessage('eventMessage','The picture must be smaller than 5 MB.',true);
+    return;
+  }
+
+  const button=$('saveEventBtn');
+  button.disabled=true;
+  button.textContent='Uploading…';
+
+  const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const imagePath=`${crypto.randomUUID()}-${safeName}`;
+
+  const {error:uploadError}=await db.storage
+    .from('other-events')
+    .upload(imagePath,file,{
+      cacheControl:'3600',
+      upsert:false,
+      contentType:file.type
+    });
+
+  if(uploadError) {
+    showMessage('eventMessage',`Photo upload failed: ${uploadError.message}`,true);
+    button.disabled=false;
+    button.textContent='Add event';
+    return;
+  }
+
+  const payload={
+    event_name:$('eventName').value.trim(),
+    event_date:$('eventDate').value,
+    event_time:$('eventTime').value,
+    location:$('eventLocation').value.trim(),
+    image_path:imagePath
+  };
+
+  const {error:insertError}=await db
+    .from('other_events')
+    .insert(payload);
+
+  if(insertError) {
+    await db.storage.from('other-events').remove([imagePath]);
+
+    showMessage('eventMessage',`Could not save event: ${insertError.message}`,true);
+
+    button.disabled=false;
+    button.textContent='Add event';
+    return;
+  }
+
+  $('eventForm').reset();
+
+  button.disabled=false;
+  button.textContent='Add event';
+
+  showMessage('eventMessage','Your event has been added successfully!');
+
+  await loadEvents();
+});
+
+
+/* DISCUSSED BOOK BUTTON */
+
+$('markDiscussedBtn').addEventListener('click',async()=>{
+  if(!isAdmin||!currentBookId) return;
+
+  if(!confirm('Move this book to “Books we’ve discussed”?')) return;
+
+  $('markDiscussedBtn').disabled=true;
+  hideMessage('heroMessage');
+
+  const {error}=await db
+    .from('books')
+    .update({section:'past'})
+    .eq('id',currentBookId)
+    .eq('section','current');
+
+  $('markDiscussedBtn').disabled=false;
+
+  if(error) {
+    showMessage('heroMessage',`Could not move the book: ${error.message}`,true);
+    return;
+  }
+
+  showMessage('heroMessage','Book moved to “Books we’ve discussed”.');
+
+  await loadBooks();
+});
+
+
+/* ADMIN BOOK MANAGEMENT */
+
+$('bookForm').addEventListener('submit',async event=>{
+  event.preventDefault();
+
+  hideMessage('bookMessage');
+
+  if(!isAdmin) {
+    showMessage('bookMessage','Administrator access is required.',true);
+    return;
+  }
+
+  const date=$('bookDate').value||null;
+
+  const payload={
+    section:$('bookSection').value,
+    title:$('bookTitle').value.trim(),
+    author:$('bookAuthor').value.trim()||null,
+    cover_url:$('bookCover').value.trim()||null,
+    meeting_date:date,
+    meeting_time:$('bookTime').value||null,
+    meeting_location:$('bookLocation').value.trim()||null,
+    notes:$('bookNotes').value.trim()||null,
+    meeting_month:date?Number(date.slice(5,7)):null,
+    meeting_year:date?Number(date.slice(0,4)):null
+  };
+
+  if(payload.section==='current') {
+    const {error:clearError}=await db
       .from('books')
-      .update({ section: 'past' })
-      .eq('id', currentBookId)
-      .eq('section', 'current');
+      .update({section:'past'})
+      .eq('section','current');
 
-    $('markDiscussedBtn').disabled = false;
-
-    if (error) {
-      showMessage('heroMessage', `Could not move the book: ${error.message}`, true);
+    if(clearError) {
+      showMessage('bookMessage',clearError.message,true);
       return;
     }
+  }
 
-    showMessage('heroMessage', 'Book moved to “Books we’ve discussed”.');
-    await loadBooks();
+  const {error}=await db.from('books').insert(payload);
+
+  if(error) {
+    showMessage('bookMessage',error.message,true);
+    return;
+  }
+
+  $('bookForm').reset();
+
+  showMessage('bookMessage','Book saved and shared with the club.');
+
+  await loadBooks();
+});
+
+
+async function deleteBook(id) {
+  if(!confirm('Delete this book entry?')) return;
+
+  const {error}=await db
+    .from('books')
+    .delete()
+    .eq('id',id);
+
+  if(error) {
+    alert(error.message);
+    return;
+  }
+
+  await loadBooks();
+}
+
+
+/* BOOK SUGGESTIONS */
+
+async function loadSuggestions() {
+  if(!isApproved) return;
+
+  const {data,error}=await db
+    .from('book_suggestions')
+    .select('*')
+    .order('created_at',{ascending:false});
+
+  const list=$('suggestionsList');
+
+  list.replaceChildren();
+
+  if(error) {
+    list.textContent='Could not load suggestions.';
+    return;
+  }
+
+  (data||[]).forEach(s=>{
+    const item=document.createElement('div');
+    item.className='item';
+
+    const title=document.createElement('h4');
+    title.textContent=s.title;
+
+    const author=document.createElement('p');
+    author.className='muted';
+    author.textContent=s.author||'Author not listed';
+
+    const reason=document.createElement('p');
+    reason.textContent=s.reason||'';
+
+    const status=document.createElement('span');
+    status.className='pill';
+    status.textContent=s.status;
+
+    item.append(title,author,reason,status);
+
+    if(isAdmin) {
+      const select=document.createElement('select');
+
+      ['pending','approved','rejected'].forEach(v=>{
+        const option=document.createElement('option');
+        option.value=v;
+        option.textContent=v;
+        option.selected=s.status===v;
+        select.appendChild(option);
+      });
+
+      select.addEventListener('change',async()=>{
+        const {error}=await db
+          .from('book_suggestions')
+          .update({status:select.value})
+          .eq('id',s.id);
+
+        if(error) alert(error.message);
+      });
+
+      item.appendChild(select);
+    }
+
+    list.appendChild(item);
   });
 
-  $('suggestionForm').addEventListener('submit',async(e)=>{
-    e.preventDefault();hideMessage('suggestionMessage');
-    const {error}=await db.from('book_suggestions').insert({title:$('suggestTitle').value.trim(),author:$('suggestAuthor').value.trim()||null,reason:$('suggestReason').value.trim()||null,suggested_by:currentUser.id,status:'pending'});
-    if(error){showMessage('suggestionMessage',error.message,true);return;}
-    $('suggestionForm').reset();showMessage('suggestionMessage','Thank you! Your suggestion has been sent to the administrator.');await loadSuggestions();
+  if(!(data||[]).length) {
+    list.textContent='No suggestions yet.';
+  }
+}
+
+
+$('suggestionForm').addEventListener('submit',async event=>{
+  event.preventDefault();
+
+  hideMessage('suggestionMessage');
+
+  if(!currentUser||!isApproved) return;
+
+  const {error}=await db.from('book_suggestions').insert({
+    title:$('suggestTitle').value.trim(),
+    author:$('suggestAuthor').value.trim()||null,
+    reason:$('suggestReason').value.trim()||null,
+    suggested_by:currentUser.id,
+    status:'pending'
   });
 
-  $('approveForm').addEventListener('submit',async(e)=>{
-    e.preventDefault();hideMessage('approvalMessage');
-    const userId=$('memberUuid').value.trim();
-    const {error}=await db.from('approved_members').insert({user_id:userId});
-    if(error){showMessage('approvalMessage',error.message,true);return;}
-    $('approveForm').reset();showMessage('approvalMessage','Member approved successfully.');await loadApprovedMembers();
+  if(error) {
+    showMessage('suggestionMessage',error.message,true);
+    return;
+  }
+
+  $('suggestionForm').reset();
+
+  showMessage(
+    'suggestionMessage',
+    'Thank you! Your suggestion has been sent to the administrator.'
+  );
+
+  await loadSuggestions();
+});
+
+
+/* MEMBER APPROVAL */
+
+async function loadApprovedMembers() {
+  const list=$('approvedList');
+
+  list.replaceChildren();
+
+  const {data,error}=await db
+    .from('approved_members')
+    .select('user_id,approved_at')
+    .order('approved_at',{ascending:false});
+
+  if(error) {
+    list.textContent='Could not load approved members. Check administrator policies.';
+    return;
+  }
+
+  (data||[]).forEach(member=>{
+    const row=document.createElement('div');
+    row.className='item';
+
+    const id=document.createElement('code');
+    id.textContent=member.user_id;
+
+    const remove=document.createElement('button');
+    remove.className='btn danger small';
+    remove.type='button';
+    remove.textContent='Remove';
+
+    remove.addEventListener('click',async()=>{
+      if(!confirm('Remove this member’s approval?')) return;
+
+      const {error}=await db
+        .from('approved_members')
+        .delete()
+        .eq('user_id',member.user_id);
+
+      if(error) {
+        alert(error.message);
+      } else {
+        await loadApprovedMembers();
+      }
+    });
+
+    row.append(id,remove);
+    list.appendChild(row);
   });
 
-  db.auth.getSession().then(async({data})=>{currentUser=data.session?.user||null;await refreshUI();});
-  db.auth.onAuthStateChange((_event,session)=>{currentUser=session?.user||null;Promise.resolve().then(refreshUI);});
+  if(!(data||[]).length) {
+    list.textContent='No approved members found.';
+  }
+}
+
+
+$('approveForm').addEventListener('submit',async event=>{
+  event.preventDefault();
+
+  hideMessage('approvalMessage');
+
+  if(!isAdmin) return;
+
+  const userId=$('memberUuid').value.trim();
+
+  const {error}=await db
+    .from('approved_members')
+    .insert({user_id:userId});
+
+  if(error) {
+    showMessage('approvalMessage',error.message,true);
+    return;
+  }
+
+  $('approveForm').reset();
+
+  showMessage('approvalMessage','Member approved successfully.');
+
+  await loadApprovedMembers();
+});
+
+
+/* LOGIN AND PERMISSIONS */
+
+async function checkMembership() {
+  if(!currentUser) {
+    isAdmin=false;
+    isApproved=false;
+    return;
+  }
+
+  const [adminRes,approvedRes]=await Promise.all([
+    db.rpc('is_book_club_admin'),
+    db.rpc('is_approved_member')
+  ]);
+
+  isAdmin=adminRes.data===true;
+  isApproved=isAdmin||approvedRes.data===true;
+
+  if(adminRes.error) console.error('Admin check:',adminRes.error);
+  if(approvedRes.error) console.error('Member approval check:',approvedRes.error);
+}
+
+
+async function refreshUI() {
+  await checkMembership();
+
+  $('accountLabel').textContent=currentUser
+    ?currentUser.email
+    :'Not signed in';
+
+  $('authPanel').classList.toggle('hidden',!!currentUser);
+  $('signOutBtn').classList.toggle('hidden',!currentUser);
+
+  $('adminBookSection').classList.toggle('hidden',!isAdmin);
+  $('adminMembersSection').classList.toggle('hidden',!isAdmin);
+  $('adminEventSection').classList.toggle('hidden',!isAdmin);
+
+  $('memberArea').classList.toggle('hidden',!isApproved);
+  $('suggestionsSection').classList.toggle('hidden',!isApproved);
+
+  if(isApproved) {
+    await loadSuggestions();
+  }
+
+  if(isAdmin) {
+    await loadApprovedMembers();
+  }
+
+  await loadBooks();
+  await loadEvents();
+}
+
+
+/* SIGN IN */
+
+$('loginForm').addEventListener('submit',async event=>{
+  event.preventDefault();
+
+  hideMessage('authMessage');
+
+  const {data,error}=await db.auth.signInWithPassword({
+    email:$('email').value,
+    password:$('password').value
+  });
+
+  if(error) {
+    showMessage('authMessage',error.message,true);
+    return;
+  }
+
+  currentUser=data.user;
+
+  await refreshUI();
+});
+
+
+/* SIGN OUT */
+
+$('signOutBtn').addEventListener('click',async()=>{
+  await db.auth.signOut();
+
+  currentUser=null;
+
+  await refreshUI();
+});
+
+
+/* INITIAL LOAD */
+
+db.auth.getSession().then(async({data})=>{
+  currentUser=data.session?.user||null;
+  await refreshUI();
+});
+
+db.auth.onAuthStateChange((_event,session)=>{
+  currentUser=session?.user||null;
+
+  Promise.resolve().then(refreshUI);
+});
+
 </script>
 </body>
 </html>
